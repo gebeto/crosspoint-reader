@@ -73,7 +73,7 @@ void CrossPointWebServer::begin() {
   server->on("/mkdir", HTTP_POST, [this] { handleCreateFolder(); });
 
   // Delete file/folder endpoint
-  server->on("/delete", HTTP_POST, [this] { handleDelete(); });
+  server->on("/delete", HTTP_ANY, [this] { handleDelete(); });
 
   server->onNotFound([this] { handleNotFound(); });
   Serial.printf("[%lu] [WEB] [MEM] Free heap after route setup: %d bytes\n", millis(), ESP.getFreeHeap());
@@ -404,14 +404,13 @@ void CrossPointWebServer::handleUpload() const {
 }
 
 void CrossPointWebServer::handleUploadPost() const {
+  server->enableCORS(true);
   if (server->method() == HTTP_OPTIONS) {
-    server->enableCORS(true);
     server->send(204, "text/plain", "");
     return;
   }
 
   if (server->method() == HTTP_POST) {
-    server->enableCORS(true);
     if (uploadSuccess) {
       server->send(200, "text/plain", "File uploaded successfully: " + uploadFileName);
     } else {
@@ -475,83 +474,96 @@ void CrossPointWebServer::handleCreateFolder() const {
 }
 
 void CrossPointWebServer::handleDelete() const {
-  // Get path from form data
-  if (!server->hasArg("path")) {
-    server->send(400, "text/plain", "Missing path");
+  server->enableCORS(true);
+  if (server->method() == HTTP_OPTIONS) {
+    server->send(204, "text/plain", "");
     return;
   }
 
-  String itemPath = server->arg("path");
-  const String itemType = server->hasArg("type") ? server->arg("type") : "file";
+  if (server->method() == HTTP_POST) {
 
-  // Validate path
-  if (itemPath.isEmpty() || itemPath == "/") {
-    server->send(400, "text/plain", "Cannot delete root directory");
-    return;
-  }
-
-  // Ensure path starts with /
-  if (!itemPath.startsWith("/")) {
-    itemPath = "/" + itemPath;
-  }
-
-  // Security check: prevent deletion of protected items
-  const String itemName = itemPath.substring(itemPath.lastIndexOf('/') + 1);
-
-  // Check if item starts with a dot (hidden/system file)
-  if (itemName.startsWith(".")) {
-    Serial.printf("[%lu] [WEB] Delete rejected - hidden/system item: %s\n", millis(), itemPath.c_str());
-    server->send(403, "text/plain", "Cannot delete system files");
-    return;
-  }
-
-  // Check against explicitly protected items
-  for (size_t i = 0; i < HIDDEN_ITEMS_COUNT; i++) {
-    if (itemName.equals(HIDDEN_ITEMS[i])) {
-      Serial.printf("[%lu] [WEB] Delete rejected - protected item: %s\n", millis(), itemPath.c_str());
-      server->send(403, "text/plain", "Cannot delete protected items");
+    // Get path from form data
+    if (!server->hasArg("path")) {
+      server->send(400, "text/plain", "Missing path");
       return;
     }
-  }
 
-  // Check if item exists
-  if (!SD.exists(itemPath.c_str())) {
-    Serial.printf("[%lu] [WEB] Delete failed - item not found: %s\n", millis(), itemPath.c_str());
-    server->send(404, "text/plain", "Item not found");
+    String itemPath = server->arg("path");
+    const String itemType = server->hasArg("type") ? server->arg("type") : "file";
+
+    // Validate path
+    if (itemPath.isEmpty() || itemPath == "/") {
+      server->send(400, "text/plain", "Cannot delete root directory");
+      return;
+    }
+
+    // Ensure path starts with /
+    if (!itemPath.startsWith("/")) {
+      itemPath = "/" + itemPath;
+    }
+
+    // Security check: prevent deletion of protected items
+    const String itemName = itemPath.substring(itemPath.lastIndexOf('/') + 1);
+
+    // Check if item starts with a dot (hidden/system file)
+    if (itemName.startsWith(".")) {
+      Serial.printf("[%lu] [WEB] Delete rejected - hidden/system item: %s\n", millis(), itemPath.c_str());
+      server->send(403, "text/plain", "Cannot delete system files");
+      return;
+    }
+
+    // Check against explicitly protected items
+    for (size_t i = 0; i < HIDDEN_ITEMS_COUNT; i++) {
+      if (itemName.equals(HIDDEN_ITEMS[i])) {
+        Serial.printf("[%lu] [WEB] Delete rejected - protected item: %s\n", millis(), itemPath.c_str());
+        server->send(403, "text/plain", "Cannot delete protected items");
+        return;
+      }
+    }
+
+    // Check if item exists
+    if (!SD.exists(itemPath.c_str())) {
+      Serial.printf("[%lu] [WEB] Delete failed - item not found: %s\n", millis(), itemPath.c_str());
+      server->send(404, "text/plain", "Item not found");
+      return;
+    }
+
+    Serial.printf("[%lu] [WEB] Attempting to delete %s: %s\n", millis(), itemType.c_str(), itemPath.c_str());
+
+    bool success = false;
+
+    if (itemType == "folder") {
+      // For folders, try to remove (will fail if not empty)
+      File dir = SD.open(itemPath.c_str());
+      if (dir && dir.isDirectory()) {
+        // Check if folder is empty
+        File entry = dir.openNextFile();
+        if (entry) {
+          // Folder is not empty
+          entry.close();
+          dir.close();
+          Serial.printf("[%lu] [WEB] Delete failed - folder not empty: %s\n", millis(), itemPath.c_str());
+          server->send(400, "text/plain", "Folder is not empty. Delete contents first.");
+          return;
+        }
+        dir.close();
+      }
+      success = SD.rmdir(itemPath.c_str());
+    } else {
+      // For files, use remove
+      success = SD.remove(itemPath.c_str());
+    }
+
+    if (success) {
+      Serial.printf("[%lu] [WEB] Successfully deleted: %s\n", millis(), itemPath.c_str());
+      server->send(200, "text/plain", "Deleted successfully");
+    } else {
+      Serial.printf("[%lu] [WEB] Failed to delete: %s\n", millis(), itemPath.c_str());
+      server->send(500, "text/plain", "Failed to delete item");
+    }
+
     return;
   }
 
-  Serial.printf("[%lu] [WEB] Attempting to delete %s: %s\n", millis(), itemType.c_str(), itemPath.c_str());
-
-  bool success = false;
-
-  if (itemType == "folder") {
-    // For folders, try to remove (will fail if not empty)
-    File dir = SD.open(itemPath.c_str());
-    if (dir && dir.isDirectory()) {
-      // Check if folder is empty
-      File entry = dir.openNextFile();
-      if (entry) {
-        // Folder is not empty
-        entry.close();
-        dir.close();
-        Serial.printf("[%lu] [WEB] Delete failed - folder not empty: %s\n", millis(), itemPath.c_str());
-        server->send(400, "text/plain", "Folder is not empty. Delete contents first.");
-        return;
-      }
-      dir.close();
-    }
-    success = SD.rmdir(itemPath.c_str());
-  } else {
-    // For files, use remove
-    success = SD.remove(itemPath.c_str());
-  }
-
-  if (success) {
-    Serial.printf("[%lu] [WEB] Successfully deleted: %s\n", millis(), itemPath.c_str());
-    server->send(200, "text/plain", "Deleted successfully");
-  } else {
-    Serial.printf("[%lu] [WEB] Failed to delete: %s\n", millis(), itemPath.c_str());
-    server->send(500, "text/plain", "Failed to delete item");
-  }
+  server->send(405, "text/plain", "Method Not Allowed");
 }
