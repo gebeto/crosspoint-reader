@@ -63,6 +63,7 @@ void CrossPointWebServer::begin() {
   server->on("/files", HTTP_GET, [this] { handleFileList(); });
 
   server->on("/api/status", HTTP_GET, [this] { handleStatus(); });
+  server->on("/api/settings", HTTP_GET, [this] { handleStatus(); });
   server->on("/api/files", HTTP_GET, [this] { handleFileListData(); });
 
   // Upload endpoint with special handling for multipart form data
@@ -162,6 +163,16 @@ void CrossPointWebServer::handleStatus() const {
   json += "\"ip\":\"" + ipAddr + "\",";
   json += "\"mode\":\"" + String(apMode ? "AP" : "STA") + "\",";
   json += "\"rssi\":" + String(apMode ? 0 : WiFi.RSSI()) + ",";  // RSSI not applicable in AP mode
+  json += "\"freeHeap\":" + String(ESP.getFreeHeap()) + ",";
+  json += "\"uptime\":" + String(millis() / 1000);
+  json += "}";
+
+  server->send(200, "application/json", json);
+}
+
+void CrossPointWebServer::handleSettings() const {
+  String json = "{";
+  json += "\"version\":\"" + String(CROSSPOINT_VERSION) + "\",";
   json += "\"freeHeap\":" + String(ESP.getFreeHeap()) + ",";
   json += "\"uptime\":" + String(millis() / 1000);
   json += "}";

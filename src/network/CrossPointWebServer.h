@@ -47,6 +47,7 @@ class CrossPointWebServer {
   void handleRoot() const;
   void handleNotFound() const;
   void handleStatus() const;
+  void handleSettings() const;
   void handleFileList() const;
   void handleFileListData() const;
   void handleUpload() const;
