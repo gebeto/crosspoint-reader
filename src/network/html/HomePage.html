@@ -124,6 +124,11 @@
 
     // Fetch status on page load
     window.onload = fetchStatus;
+
+    const advancedFileManager = document.createElement('a');
+    advancedFileManager.href = "https://gebeto.github.io/crosspoint-web-manager?api_url=" + encodeURI(window.location.origin);
+    advancedFileManager.textContent = "Advanced File Manager";
+    document.querySelector('.nav-links').appendChild(advancedFileManager);
   </script>
   </body>
 </html>
