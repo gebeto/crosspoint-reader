@@ -9,6 +9,7 @@
 
 #include "html/FilesPageHtml.generated.h"
 #include "html/HomePageHtml.generated.h"
+#include "CrossPointSettings.h"
 
 namespace {
 // Folders/files to hide from the web interface file browser
@@ -63,7 +64,7 @@ void CrossPointWebServer::begin() {
   server->on("/files", HTTP_GET, [this] { handleFileList(); });
 
   server->on("/api/status", HTTP_GET, [this] { handleStatus(); });
-  server->on("/api/settings", HTTP_GET, [this] { handleStatus(); });
+  server->on("/api/settings", HTTP_GET, [this] { handleSettings(); });
   server->on("/api/files", HTTP_GET, [this] { handleFileListData(); });
 
   // Upload endpoint with special handling for multipart form data
@@ -172,9 +173,19 @@ void CrossPointWebServer::handleStatus() const {
 
 void CrossPointWebServer::handleSettings() const {
   String json = "{";
-  json += "\"version\":\"" + String(CROSSPOINT_VERSION) + "\",";
-  json += "\"freeHeap\":" + String(ESP.getFreeHeap()) + ",";
-  json += "\"uptime\":" + String(millis() / 1000);
+  for (int i = 0; i < settingsCount; i++) {
+    if (settingsList[i].type == SettingType::TOGGLE && settingsList[i].valuePtr != nullptr) {
+      const bool value = SETTINGS.*(settingsList[i].valuePtr);
+      json += "\"" + String(settingsList[i].name) + "\":\"" + String(value ? "ON" : "OFF") + "\"";
+    } else if (settingsList[i].type == SettingType::ENUM && settingsList[i].valuePtr != nullptr) {
+      const uint8_t value = SETTINGS.*(settingsList[i].valuePtr);
+      auto valueText = settingsList[i].enumValues[value];
+      json += "\"" + String(settingsList[i].name) + "\":\"" + String(valueText.c_str()) + "\"";
+    }
+    if (i < settingsCount - 2) {
+      json += ",";
+    }
+  }
   json += "}";
 
   server->send(200, "application/json", json);

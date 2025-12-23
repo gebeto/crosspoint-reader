@@ -7,17 +7,6 @@
 #include "OtaUpdateActivity.h"
 #include "config.h"
 
-// Define the static settings list
-namespace {
-constexpr int settingsCount = 4;
-const SettingInfo settingsList[settingsCount] = {
-    // Should match with SLEEP_SCREEN_MODE
-    {"Sleep Screen", SettingType::ENUM, &CrossPointSettings::sleepScreen, {"Dark", "Light", "Custom", "Cover"}},
-    {"Extra Paragraph Spacing", SettingType::TOGGLE, &CrossPointSettings::extraParagraphSpacing, {}},
-    {"Short Power Button Click", SettingType::TOGGLE, &CrossPointSettings::shortPwrBtn, {}},
-    {"Check for updates", SettingType::ACTION, nullptr, {}},
-};
-}  // namespace
 
 void SettingsActivity::taskTrampoline(void* param) {
   auto* self = static_cast<SettingsActivity*>(param);

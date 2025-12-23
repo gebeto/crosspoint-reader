@@ -7,19 +7,9 @@
 #include <string>
 #include <vector>
 
+#include "CrossPointSettings.h"
+
 #include "activities/ActivityWithSubactivity.h"
-
-class CrossPointSettings;
-
-enum class SettingType { TOGGLE, ENUM, ACTION };
-
-// Structure to hold setting information
-struct SettingInfo {
-  const char* name;                        // Display name of the setting
-  SettingType type;                        // Type of setting
-  uint8_t CrossPointSettings::* valuePtr;  // Pointer to member in CrossPointSettings (for TOGGLE/ENUM)
-  std::vector<std::string> enumValues;
-};
 
 class SettingsActivity final : public ActivityWithSubactivity {
   TaskHandle_t displayTaskHandle = nullptr;
