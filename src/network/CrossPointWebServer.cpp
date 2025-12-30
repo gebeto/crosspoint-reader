@@ -9,9 +9,6 @@
 
 #include "html/FilesPageHtml.generated.h"
 #include "html/HomePageHtml.generated.h"
-#include "html/manager/indexCss.generated.h"
-#include "html/manager/indexHtml.generated.h"
-#include "html/manager/indexJs.generated.h"
 
 namespace {
 // Folders/files to hide from the web interface file browser
@@ -70,24 +67,8 @@ void CrossPointWebServer::begin() {
 
   // Setup routes
   Serial.printf("[%lu] [WEB] Setting up routes...\n", millis());
-  server->on("/status", HTTP_GET, [this] { handleStatusPage(); });
+  server->on("/", HTTP_GET, [this] { handleStatusPage(); });
   server->on("/files", HTTP_GET, [this] { handleFileList(); });
-
-  server->on("/", HTTP_GET, [this] {
-    server->setContentLength(indexHtml_size);
-    server->send(200, "text/html", "");
-    server->sendContent((char*)indexHtml_data, indexHtml_size);
-  });
-  server->on("/index.css", HTTP_GET, [this] {
-    server->setContentLength(indexCss_size);
-    server->send(200, "text/css", "");
-    server->sendContent((char*)indexCss_data, indexCss_size);
-  });
-  server->on("/index.js", HTTP_GET, [this] {
-    server->setContentLength(indexJs_size);
-    server->send(200, "text/javascript", "");
-    server->sendContent((char*)indexJs_data, indexJs_size);
-  });
 
   server->on("/api/status", HTTP_GET, [this] { handleStatus(); });
   server->on("/api/files", HTTP_GET, [this] { handleFileListData(); });

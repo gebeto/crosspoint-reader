@@ -93,15 +93,6 @@ def build_static(src_path: str, dest_dir: str):
         variable_name=cpp_variable_name
     )
 
-def build_web_manager():
-    header_dist_path = "src/network/html/manager"
-    build_static("web-manager/dist/index.html", header_dist_path)
-    build_static("web-manager/dist/index.css", header_dist_path)
-    build_static("web-manager/dist/index.js", header_dist_path)
-
-
-build_web_manager()
-
 for root, _, files in os.walk(SRC_DIR):
     for file in files:
         if file.endswith((".html", ".css", ".js")):
