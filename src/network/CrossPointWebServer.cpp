@@ -612,7 +612,7 @@ void CrossPointWebServer::handleMove() const {
   }
 
   // Check if item exists
-  if (!SD.exists(itemPath.c_str())) {
+  if (!SdMan.exists(itemPath.c_str())) {
     Serial.printf("[%lu] [WEB] Move failed - item not found: %s\n", millis(), itemPath.c_str());
     server->send(404, "text/plain", "Item not found");
     return;
@@ -620,7 +620,7 @@ void CrossPointWebServer::handleMove() const {
 
   Serial.printf("[%lu] [WEB] Attempting to move %s: %s\n", millis(), itemType.c_str(), itemPath.c_str());
 
-  bool success = SD.rename(itemPath.c_str(), newItemPath.c_str());
+  bool success = SdMan.rename(itemPath.c_str(), newItemPath.c_str());
 
   if (success) {
     Serial.printf("[%lu] [WEB] Successfully moved: %s\n", millis(), itemPath.c_str());
